@@ -112,6 +112,10 @@ func TraverseHelp(path []*PathStep, value JsonValue, matcher Matcher) ([]*Match,
 	//   early exit
 	//   whether to continue
 
+	// TODO key/val pair:
+	//   match twice?  (1: as member of kv; 2: as v)
+	//   or match once?
+
 	if value.Object != nil {
 		for key, val := range *value.Object {
 			// copy key and path
@@ -157,6 +161,29 @@ func TraverseHelp(path []*PathStep, value JsonValue, matcher Matcher) ([]*Match,
 	}
 
 	return matches, false
+}
+
+func MatchPredicate(pred func(path []*PathStep, value JsonValue, step *PathStep) bool) Matcher {
+	return func(path []*PathStep, value JsonValue, step *PathStep) ([]*Match, bool) {
+		if pred(path, value, step) {
+			return []*Match{{
+				Path:  path,
+				Value: value,
+			}}, false
+		}
+		return nil, false
+	}
+}
+
+func MatchFirst(matcher Matcher) Matcher {
+	// TODO this is wasteful because it doesn't stop the traversal after finding the first result
+	return func(path []*PathStep, value JsonValue, step *PathStep) ([]*Match, bool) {
+		matches, _ := matcher(path, value, step)
+		if len(matches) > 0 {
+			return []*Match{matches[0]}, true
+		}
+		return nil, false
+	}
 }
 
 func MatchKey(key string) Matcher {
